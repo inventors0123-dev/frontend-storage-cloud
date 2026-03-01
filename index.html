@@ -13,7 +13,9 @@
         body { background-color: #f0f2f5; font-family: 'Inter', sans-serif; }
         .navbar { background: var(--bsl-navy); box-shadow: 0 2px 10px rgba(0,0,0,0.1); }
         .premium-card { border: none; border-radius: 16px; background: white; box-shadow: 0 4px 20px rgba(0,0,0,0.05); }
+        .form-card { border: none; border-radius: 16px; background: white; box-shadow: 0 6px 24px rgba(0,0,0,0.06); }
         .search-bar { border-radius: 12px; border: 1px solid #ddd; padding: 12px 20px; transition: 0.3s; }
+        .form-control { border-radius: 10px; border: 1px solid #eee; background: #fcfcfc; }
         .btn-bsl { background: var(--bsl-orange); color: white; border-radius: 10px; font-weight: 600; border: none; }
         .btn-bsl:hover { background: #e67e00; color: white; }
         .badge-user { background: #e9ecef; color: #495057; border-radius: 6px; padding: 4px 8px; font-size: 0.8rem; margin-right: 4px; display: inline-block; margin-bottom: 4px; }
@@ -34,11 +36,30 @@
     <div class="row mb-4 align-items-center">
         <div class="col-md-8">
             <h2 class="fw-bold mb-0">Active Projects</h2>
-            <p class="text-muted">Frontend-only mode (data saved in your browser)</p>
+            <p class="text-muted">Create and manage projects from one page (saved in your browser)</p>
         </div>
         <div class="col-md-4 text-end">
-            <a href="/create.html" class="btn btn-bsl p-3">+ New Project</a>
+            <a href="#new-project" class="btn btn-bsl p-3">+ New Project</a>
         </div>
+    </div>
+
+    <div class="form-card p-4 mb-4" id="new-project">
+        <h5 class="fw-bold mb-3">Create New Project</h5>
+        <form id="projectForm">
+            <div class="mb-3">
+                <label class="small fw-bold text-muted">PROJECT NAME</label>
+                <input type="text" name="name" class="form-control" placeholder="Name and Location" required>
+            </div>
+            <div class="mb-3">
+                <label class="small fw-bold text-muted">TEAM EMAILS (COMMA SEPARATED)</label>
+                <textarea name="email" class="form-control" rows="3" placeholder="user@gmail.com, admin@inventors.xyz" required></textarea>
+            </div>
+            <div class="mb-4">
+                <label class="small fw-bold text-muted">GOOGLE DRIVE FOLDER ID (OPTIONAL)</label>
+                <input type="text" name="drive_id" class="form-control" placeholder="Example: 1AbCdEfG...">
+            </div>
+            <button type="submit" class="btn btn-bsl px-4 py-2">Save Project</button>
+        </form>
     </div>
 
     <div class="mb-4">
@@ -73,6 +94,29 @@ function loadProjects() {
 
 function saveProjects(projects) {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(projects));
+}
+
+function onCreateSubmit(event) {
+    event.preventDefault();
+
+    const formData = new FormData(event.target);
+    const name = (formData.get("name") || "").trim();
+    const rawEmails = (formData.get("email") || "").trim();
+    const driveId = (formData.get("drive_id") || "").trim();
+    const emails = rawEmails.split(",").map(e => e.trim()).filter(Boolean);
+
+    if (!name || !emails.length) {
+        alert("Please add project name and at least one email.");
+        return;
+    }
+
+    const projects = loadProjects();
+    projects.unshift({ name, emails, driveId });
+    saveProjects(projects);
+
+    event.target.reset();
+    renderProjects();
+    window.location.hash = "";
 }
 
 function escapeHtml(text) {
@@ -145,6 +189,7 @@ function copyLink(url) {
     alert("Project link copied successfully!");
 }
 
+document.getElementById("projectForm").addEventListener("submit", onCreateSubmit);
 renderProjects();
 </script>
 </body>
