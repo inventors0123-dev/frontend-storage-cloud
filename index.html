@@ -1,0 +1,151 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Cloud Project Portal</title>
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        :root { --bsl-navy: #003366; --bsl-orange: #ff8c00; }
+        body { background-color: #f0f2f5; font-family: 'Inter', sans-serif; }
+        .navbar { background: var(--bsl-navy); box-shadow: 0 2px 10px rgba(0,0,0,0.1); }
+        .premium-card { border: none; border-radius: 16px; background: white; box-shadow: 0 4px 20px rgba(0,0,0,0.05); }
+        .search-bar { border-radius: 12px; border: 1px solid #ddd; padding: 12px 20px; transition: 0.3s; }
+        .btn-bsl { background: var(--bsl-orange); color: white; border-radius: 10px; font-weight: 600; border: none; }
+        .btn-bsl:hover { background: #e67e00; color: white; }
+        .badge-user { background: #e9ecef; color: #495057; border-radius: 6px; padding: 4px 8px; font-size: 0.8rem; margin-right: 4px; display: inline-block; margin-bottom: 4px; }
+        .action-btn { border-radius: 8px; transition: 0.2s; background: white; border: 1px solid #eee; }
+        .action-btn:hover { background: #f8f9fa; transform: translateY(-2px); }
+        .empty-row td { color: #6c757d; text-align: center; padding: 2rem; }
+    </style>
+</head>
+<body>
+<nav class="navbar navbar-dark p-3 mb-5">
+    <div class="container d-flex justify-content-between align-items-center">
+        <span class="navbar-brand h1 mb-0 fw-bold">Cloud Project Portal</span>
+        <span class="text-white-50 small">frontend-only</span>
+    </div>
+</nav>
+
+<div class="container">
+    <div class="row mb-4 align-items-center">
+        <div class="col-md-8">
+            <h2 class="fw-bold mb-0">Active Projects</h2>
+            <p class="text-muted">Frontend-only mode (data saved in your browser)</p>
+        </div>
+        <div class="col-md-4 text-end">
+            <a href="/create.html" class="btn btn-bsl p-3">+ New Project</a>
+        </div>
+    </div>
+
+    <div class="mb-4">
+        <input type="text" id="myInput" onkeyup="searchTable()" class="form-control search-bar" placeholder="Search project name or user email...">
+    </div>
+
+    <div class="premium-card overflow-hidden">
+        <table class="table align-middle mb-0" id="projectTable">
+            <thead class="table-light">
+                <tr>
+                    <th class="ps-4 py-3">PROJECT DETAILS</th>
+                    <th>ASSIGNED TEAM</th>
+                    <th class="text-end pe-4">MANAGEMENT</th>
+                </tr>
+            </thead>
+            <tbody id="projectsBody"></tbody>
+        </table>
+    </div>
+</div>
+
+<script>
+const STORAGE_KEY = "project_portal_projects";
+
+function loadProjects() {
+    try {
+        const raw = localStorage.getItem(STORAGE_KEY);
+        return raw ? JSON.parse(raw) : [];
+    } catch (e) {
+        return [];
+    }
+}
+
+function saveProjects(projects) {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(projects));
+}
+
+function escapeHtml(text) {
+    return String(text)
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;")
+        .replace(/"/g, "&quot;")
+        .replace(/'/g, "&#039;");
+}
+
+function renderProjects() {
+    const projects = loadProjects();
+    const tbody = document.getElementById("projectsBody");
+
+    if (!projects.length) {
+        tbody.innerHTML = '<tr class="empty-row"><td colspan="3">No projects yet. Click "New Project" to add one.</td></tr>';
+        return;
+    }
+
+    tbody.innerHTML = projects.map((p, index) => {
+        const safeName = escapeHtml(p.name || "");
+        const safeDriveId = escapeHtml(p.driveId || "");
+        const folderUrl = safeDriveId ? "https://drive.google.com/drive/folders/" + safeDriveId : "#";
+        const emails = (p.emails || [])
+            .map(email => '<span class="badge-user">' + escapeHtml(email) + '</span>')
+            .join("");
+
+        return `
+            <tr>
+                <td class="ps-4">
+                    <div class="fw-bold fs-5">${safeName}</div>
+                    <small class="text-muted">Folder ID: ${safeDriveId ? safeDriveId.slice(0, 12) + "..." : "Not set"}</small>
+                </td>
+                <td>${emails || '<span class="text-muted">No emails</span>'}</td>
+                <td class="text-end pe-4">
+                    <div class="btn-group shadow-sm">
+                        <a href="${folderUrl}" target="_blank" class="btn action-btn px-3" title="Open Drive"><i class="fa-brands fa-google-drive text-primary"></i></a>
+                        <button class="btn action-btn px-3" onclick="copyLink('${folderUrl}')" title="Copy Link"><i class="fa-solid fa-link text-secondary"></i></button>
+                        <a href="https://wa.me/?text=Folder for ${encodeURIComponent(safeName)}: ${encodeURIComponent(folderUrl)}" target="_blank" class="btn action-btn px-3" title="WhatsApp"><i class="fa-brands fa-whatsapp" style="color: #25D366;"></i></a>
+                        <button class="btn action-btn px-3" onclick="deleteProject(${index})" title="Delete"><i class="fa-solid fa-trash-can text-danger"></i></button>
+                    </div>
+                </td>
+            </tr>
+        `;
+    }).join("");
+}
+
+function deleteProject(index) {
+    const projects = loadProjects();
+    projects.splice(index, 1);
+    saveProjects(projects);
+    renderProjects();
+}
+
+function searchTable() {
+    const input = document.getElementById("myInput").value.toUpperCase();
+    const rows = document.getElementById("projectTable").getElementsByTagName("tr");
+    for (let i = 1; i < rows.length; i++) {
+        rows[i].style.display = rows[i].innerText.toUpperCase().indexOf(input) > -1 ? "" : "none";
+    }
+}
+
+function copyLink(url) {
+    if (!url || url === "#") {
+        alert("No Google Drive folder link for this project.");
+        return;
+    }
+    navigator.clipboard.writeText(url);
+    alert("Project link copied successfully!");
+}
+
+renderProjects();
+</script>
+</body>
+</html>
